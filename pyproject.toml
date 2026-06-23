@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stegtriage"
+version = "0.1.0"
+description = "Automated steganography / forensics triage tool for CTF challenges"
+requires-python = ">=3.10"
+dependencies = [
+    "pillow",
+    "numpy",
+    "rich",
+    "click",
+]
+
+[project.scripts]
+stegtriage = "stegtriage.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["stegtriage*"]
+
+[tool.setuptools.package-data]
+stegtriage = ["data/*.txt"]
