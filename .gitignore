@@ -6,3 +6,6 @@ dist/
 build/
 .eggs/
 stegtriage_*/
+SPECS.md
+test_*.png
+test_*.jpg
