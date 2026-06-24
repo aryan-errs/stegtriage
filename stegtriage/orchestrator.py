@@ -37,14 +37,14 @@ MODULE_REQUIRED_TOOL: dict[str, str | None] = {
     "fileinfo": None,
     "strings":  None,
     "exif":     "exiftool",
-    "binwalk":  "binwalk",
+    "binwalk":  None,   # native trailing-data check always runs; binwalk binary is optional
     "lsb":      None,
     "zsteg":    "zsteg",
     "steghide": "steghide",
 }
 
 # Ordered list of all modules (grows with each build step)
-ALL_MODULES: list[str] = ["fileinfo", "strings"]
+ALL_MODULES: list[str] = ["fileinfo", "exif", "strings", "binwalk"]
 
 # ---------------------------------------------------------------------------
 # Severity rendering
@@ -95,8 +95,14 @@ def _load_module_fn(name: str) -> Callable | None:
     if name == "fileinfo":
         from stegtriage.modules.fileinfo import run
         return run
+    if name == "exif":
+        from stegtriage.modules.exif import run
+        return run
     if name == "strings":
         from stegtriage.modules.strings_mod import run
+        return run
+    if name == "binwalk":
+        from stegtriage.modules.binwalk_mod import run
         return run
     return None
 
@@ -316,6 +322,13 @@ def _render_next_steps(tagged: list[tuple[str, Finding]]) -> None:
             add("Private key material in file — extract and check for associated services.")
         if f.artifact and any(f.artifact.endswith(ext) for ext in (".zip", ".gz", ".tar")):
             add(f"Embedded archive → try: unzip {f.artifact}")
+        if f.severity == "high" and "trailing" in f.label.lower():
+            artifact_hint = f" → inspect {f.artifact}" if f.artifact else ""
+            add(f"Trailing data after container EOF{artifact_hint} — try: binwalk -e or unzip on the original file.")
+        if "gps" in f.label.lower():
+            add("GPS coordinates found in EXIF — check for location leakage or encoded hints.")
+        if "thumbnail" in f.label.lower() and f.artifact:
+            add(f"Embedded thumbnail extracted to {f.artifact} — compare it visually against the main image.")
 
     if tips:
         console.print()
