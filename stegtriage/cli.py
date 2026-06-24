@@ -14,6 +14,8 @@ console = Console()
 @click.argument("image", required=False, type=click.Path())
 @click.option("--wordlist",    type=click.Path(), default=None,
               help="Wordlist for steghide passphrase brute-force.")
+@click.option("--password",    default=None,
+              help="Single passphrase to try with steghide (skips wordlist).")
 @click.option("--outdir",      type=click.Path(), default=None,
               help="Output directory for artifacts (default: ./stegtriage_<basename>/).")
 @click.option("--only",        default=None,
@@ -33,6 +35,7 @@ console = Console()
 def main(
     image: str | None,
     wordlist: str | None,
+    password: str | None,
     outdir: str | None,
     only: str | None,
     skip: str | None,
@@ -65,6 +68,8 @@ def main(
         emit_json=emit_json,
         quiet=quiet,
         verbosity=verbosity,
+        wordlist=wordlist,
+        password=password,
     )
 
 

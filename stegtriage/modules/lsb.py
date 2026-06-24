@@ -7,7 +7,7 @@ import numpy as np
 from PIL import Image
 
 from stegtriage.models import Finding, ModuleResult
-from stegtriage.patterns import FLAG_PATTERNS, scan_text
+from stegtriage.patterns import FLAG_PATTERNS, extract_strings, scan_text
 
 
 # ---------------------------------------------------------------------------
@@ -39,21 +39,6 @@ def _pack_bytes(bits: np.ndarray, msb_first: bool) -> bytes:
          np.array([1, 2, 4, 8, 16, 32, 64, 128], dtype=np.uint32))
     return bytes((b * w).sum(axis=1).astype(np.uint8))
 
-
-def _extract_strings(data: bytes, min_len: int = 5) -> list[str]:
-    """Extract printable-ASCII runs of at least *min_len* bytes."""
-    out: list[str] = []
-    buf: list[str] = []
-    for byte in data:
-        if 0x20 <= byte < 0x7F:
-            buf.append(chr(byte))
-        else:
-            if len(buf) >= min_len:
-                out.append("".join(buf))
-            buf = []
-    if len(buf) >= min_len:
-        out.append("".join(buf))
-    return out
 
 
 # ---------------------------------------------------------------------------
@@ -89,6 +74,7 @@ _MAX_SCAN_BYTES = 16 * 1024   # inspect first 16 KB per ordering
 def _scan_orderings(
     arr: np.ndarray,
     ch_names: list[str],
+    min_str_len: int = 6,
 ) -> list[tuple[str, list[dict]]]:
     """Try many LSB orderings; return [(label, hits)] for orderings with hits.
 
@@ -115,7 +101,7 @@ def _scan_orderings(
                 label = f"{combo_name}/{order}"
                 bits = _extract_lsb_bits(arr, idxs, col_major)
                 raw = _pack_bytes(bits, msb_first)[:_MAX_SCAN_BYTES]
-                strings = _extract_strings(raw)
+                strings = extract_strings(raw, min_str_len)
                 if not strings:
                     continue
                 text = "\n".join(strings)
@@ -244,7 +230,8 @@ def run(image_path: str, outdir: str, tool_paths: dict, **opts) -> ModuleResult:
     # ----------------------------------------------------------------
     # (b) Multi-ordering LSB bitstream scan
     # ----------------------------------------------------------------
-    ordering_results = _scan_orderings(arr, ch_names)
+    min_str_len: int = opts.get("min_str_len", 6)
+    ordering_results = _scan_orderings(arr, ch_names, min_str_len)
     raw_lines.append(f"(b) Scanned {len(ch_names)*2*2 + 4} orderings; "
                      f"{len(ordering_results)} had pattern hits")
 

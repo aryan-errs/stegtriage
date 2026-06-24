@@ -127,3 +127,19 @@ def scan_text(text: str) -> list[dict]:
         hits.append({"pattern": "privkey", "match": m.group()})
 
     return hits
+
+
+def extract_strings(data: bytes, min_len: int = 6) -> list[str]:
+    """Extract printable ASCII runs of at least *min_len* bytes from raw bytes."""
+    out: list[str] = []
+    buf: list[str] = []
+    for byte in data:
+        if 0x20 <= byte < 0x7F:
+            buf.append(chr(byte))
+        else:
+            if len(buf) >= min_len:
+                out.append("".join(buf))
+            buf = []
+    if len(buf) >= min_len:
+        out.append("".join(buf))
+    return out

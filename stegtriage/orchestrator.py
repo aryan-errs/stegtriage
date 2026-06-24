@@ -44,7 +44,7 @@ MODULE_REQUIRED_TOOL: dict[str, str | None] = {
 }
 
 # Ordered list of all modules (grows with each build step)
-ALL_MODULES: list[str] = ["fileinfo", "exif", "strings", "binwalk", "lsb"]
+ALL_MODULES: list[str] = ["fileinfo", "exif", "strings", "binwalk", "lsb", "zsteg", "steghide"]
 
 # ---------------------------------------------------------------------------
 # Severity rendering
@@ -107,6 +107,12 @@ def _load_module_fn(name: str) -> Callable | None:
     if name == "lsb":
         from stegtriage.modules.lsb import run
         return run
+    if name == "zsteg":
+        from stegtriage.modules.zsteg import run
+        return run
+    if name == "steghide":
+        from stegtriage.modules.steghide import run
+        return run
     return None
 
 
@@ -125,6 +131,8 @@ def run_analysis(
     emit_json: bool = False,
     quiet: bool = False,
     verbosity: int = 0,
+    wordlist: str | None = None,
+    password: str | None = None,
 ) -> list[ModuleResult]:
     path = Path(image_path)
     if not path.exists():
@@ -150,7 +158,7 @@ def run_analysis(
         console.print(f"[dim]Artifacts → {resolved_outdir}/[/dim]")
         console.print()
 
-    opts = {"min_str_len": min_str_len, "verbosity": verbosity}
+    opts = {"min_str_len": min_str_len, "verbosity": verbosity, "wordlist": wordlist, "password": password}
     max_workers = max(1, threads or os.cpu_count() or 4)
 
     results: list[ModuleResult] = []
@@ -331,9 +339,14 @@ def _render_next_steps(tagged: list[tuple[str, Finding]]) -> None:
             add("GPS coordinates found in EXIF — check for location leakage or encoded hints.")
         if "thumbnail" in f.label.lower() and f.artifact:
             add(f"Embedded thumbnail extracted to {f.artifact} — compare it visually against the main image.")
-        if "lsb" in str(getattr(f, "label", "")).lower() and "plane" in str(getattr(f, "label", "")).lower() and f.artifact:
+        if "lsb" in f.label.lower() and "plane" in f.label.lower() and f.artifact:
             add(f"Structured LSB plane → open {f.artifact} for visual inspection, "
                 "or try: zsteg -a image.png")
+        if "steghide" in f.label.lower() and "no passphrase" in f.label.lower():
+            add("steghide brute-force failed — try a larger wordlist: "
+                "stegtriage image.jpg --wordlist /usr/share/wordlists/rockyou.txt")
+        if f.severity == "high" and "steghide extraction succeeded" in f.label.lower() and f.artifact:
+            add(f"steghide extracted data to {f.artifact} — inspect it for the flag.")
 
     if tips:
         console.print()

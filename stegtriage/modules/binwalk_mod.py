@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import struct
 import subprocess
 import time
@@ -33,6 +34,39 @@ def _jpeg_eof(data: bytes) -> int | None:
     """Return offset just past JPEG EOI (FF D9), or None if not JPEG."""
     if not data.startswith(b"\xff\xd8\xff"):
         return None
+
+    pos = 2  # skip SOI
+    while pos + 2 <= len(data):
+        if data[pos] != 0xFF:
+            break
+        marker = data[pos + 1]
+
+        if marker == 0xD9:
+            return pos + 2
+
+        if marker == 0xD8 or marker == 0x01 or 0xD0 <= marker <= 0xD7:
+            pos += 2
+            continue
+
+        if marker == 0xDA:  # SOS: skip header then entropy-coded stream
+            if pos + 4 > len(data):
+                break
+            pos += 2 + struct.unpack_from(">H", data, pos + 2)[0]
+            while pos < len(data) - 1:
+                if data[pos] == 0xFF:
+                    nxt = data[pos + 1]
+                    if nxt != 0x00 and not (0xD0 <= nxt <= 0xD7):
+                        break
+                pos += 1
+            continue
+
+        if pos + 4 > len(data):
+            break
+        seg_len = struct.unpack_from(">H", data, pos + 2)[0]
+        if seg_len < 2:
+            break
+        pos += 2 + seg_len
+
     idx = data.rfind(b"\xff\xd9")
     return idx + 2 if idx != -1 else None
 
@@ -193,9 +227,7 @@ def run(image_path: str, outdir: str, tool_paths: dict, **opts) -> ModuleResult:
         for carved in sorted(after - before):
             if not carved.is_file():
                 continue
-            # Try to read the offset from the filename stem
-            import re as _re
-            m = _re.match(r'^([0-9A-Fa-f]+)', carved.stem)
+            m = re.match(r'^([0-9A-Fa-f]+)', carved.stem)
             if m:
                 file_offset = int(m.group(1), 16)
                 is_past = eof_offset is not None and file_offset >= eof_offset

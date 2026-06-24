@@ -4,23 +4,7 @@ import time
 from pathlib import Path
 
 from stegtriage.models import Finding, ModuleResult
-from stegtriage.patterns import FLAG_PATTERNS, scan_text
-
-
-def _extract_strings(data: bytes, min_len: int = 6) -> list[str]:
-    """Extract printable ASCII runs of at least *min_len* bytes."""
-    result: list[str] = []
-    buf: list[str] = []
-    for byte in data:
-        if 0x20 <= byte < 0x7F:
-            buf.append(chr(byte))
-        else:
-            if len(buf) >= min_len:
-                result.append("".join(buf))
-            buf = []
-    if len(buf) >= min_len:
-        result.append("".join(buf))
-    return result
+from stegtriage.patterns import FLAG_PATTERNS, extract_strings, scan_text
 
 
 def run(image_path: str, outdir: str, tool_paths: dict, **opts) -> ModuleResult:
@@ -38,7 +22,7 @@ def run(image_path: str, outdir: str, tool_paths: dict, **opts) -> ModuleResult:
             raw_output=str(e), duration_s=time.monotonic() - t0,
         )
 
-    strings_list = _extract_strings(data, min_len)
+    strings_list = extract_strings(data, min_len)
     full_dump = "\n".join(strings_list)
 
     dump_path = out / "strings_dump.txt"
