@@ -44,7 +44,7 @@ MODULE_REQUIRED_TOOL: dict[str, str | None] = {
 }
 
 # Ordered list of all modules (grows with each build step)
-ALL_MODULES: list[str] = ["fileinfo", "exif", "strings", "binwalk"]
+ALL_MODULES: list[str] = ["fileinfo", "exif", "strings", "binwalk", "lsb"]
 
 # ---------------------------------------------------------------------------
 # Severity rendering
@@ -103,6 +103,9 @@ def _load_module_fn(name: str) -> Callable | None:
         return run
     if name == "binwalk":
         from stegtriage.modules.binwalk_mod import run
+        return run
+    if name == "lsb":
+        from stegtriage.modules.lsb import run
         return run
     return None
 
@@ -168,7 +171,7 @@ def run_analysis(
     if emit_json:
         print(json.dumps([dataclasses.asdict(r) for r in results], indent=2))
     else:
-        _render_summary(results, quiet=quiet, verbosity=verbosity, show_header=not quiet)
+        _render_summary(results, verbosity=verbosity, show_header=not quiet)
 
     return results
 
@@ -231,7 +234,6 @@ def _run_module(
 def _render_summary(
     results: list[ModuleResult],
     *,
-    quiet: bool,
     verbosity: int,
     show_header: bool = True,
 ) -> None:
@@ -308,7 +310,7 @@ def _render_next_steps(tagged: list[tuple[str, Finding]]) -> None:
             tips.append(tip)
             seen.add(tip)
 
-    for _mod, f in tagged:
+    for _, f in tagged:
         if f.severity == "high" and "mismatch" in f.label.lower():
             add(
                 "Extension/type mismatch — rename to the real extension "
@@ -329,6 +331,9 @@ def _render_next_steps(tagged: list[tuple[str, Finding]]) -> None:
             add("GPS coordinates found in EXIF — check for location leakage or encoded hints.")
         if "thumbnail" in f.label.lower() and f.artifact:
             add(f"Embedded thumbnail extracted to {f.artifact} — compare it visually against the main image.")
+        if "lsb" in str(getattr(f, "label", "")).lower() and "plane" in str(getattr(f, "label", "")).lower() and f.artifact:
+            add(f"Structured LSB plane → open {f.artifact} for visual inspection, "
+                "or try: zsteg -a image.png")
 
     if tips:
         console.print()

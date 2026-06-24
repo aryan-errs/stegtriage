@@ -184,17 +184,31 @@ def run(image_path: str, outdir: str, tool_paths: dict, **opts) -> ModuleResult:
                     detail=description[:150],
                 ))
 
-        # List newly-extracted files as artifacts
+        # List newly-extracted files as artifacts.
+        # binwalk names extracted files by their hex offset in the source file
+        # (e.g. "1AD.zip" was carved from offset 0x1AD).  We use that to decide
+        # severity: files from offsets past the container EOF are HIGH; files
+        # from within the container (e.g. PNG IDAT zlib at 0x29) are MEDIUM.
         after: set[Path] = set(extract_dir.rglob("*"))
         for carved in sorted(after - before):
-            if carved.is_file():
-                sev = "high" if native_findings else "medium"
-                findings.append(Finding(
-                    severity=sev,
-                    label=f"Binwalk extracted: {carved.name}",
-                    detail=f"Carved file — {carved.stat().st_size:,} bytes",
-                    artifact=str(carved),
-                ))
+            if not carved.is_file():
+                continue
+            # Try to read the offset from the filename stem
+            import re as _re
+            m = _re.match(r'^([0-9A-Fa-f]+)', carved.stem)
+            if m:
+                file_offset = int(m.group(1), 16)
+                is_past = eof_offset is not None and file_offset >= eof_offset
+            else:
+                # Filename has no hex prefix (e.g. "secret.txt" inside a ZIP)
+                # Treat as HIGH only if there was trailing data at all
+                is_past = bool(native_findings)
+            findings.append(Finding(
+                severity="high" if is_past else "medium",
+                label=f"Binwalk extracted: {carved.name}",
+                detail=f"Carved file — {carved.stat().st_size:,} bytes",
+                artifact=str(carved),
+            ))
 
     raw_output = "\n".join(raw_lines) if raw_lines else "Native trailing-data check only (binwalk not used)."
     return ModuleResult(
