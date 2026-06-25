@@ -21,5 +21,11 @@ stegtriage = "stegtriage.cli:main"
 where = ["."]
 include = ["stegtriage*"]
 
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
 [tool.setuptools.package-data]
 stegtriage = ["data/*.txt"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
