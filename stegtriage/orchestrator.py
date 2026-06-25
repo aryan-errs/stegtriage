@@ -319,34 +319,49 @@ def _render_next_steps(tagged: list[tuple[str, Finding]]) -> None:
             seen.add(tip)
 
     for _, f in tagged:
-        if f.severity == "high" and "mismatch" in f.label.lower():
+        lo = f.label.lower()
+
+        if f.severity == "high" and "mismatch" in lo:
             add(
                 "Extension/type mismatch — rename to the real extension "
                 "and open with the appropriate tool (unzip, binwalk, etc.)."
             )
-        if f.severity == "high" and "flag" in f.label.lower():
+        if f.severity == "high" and "flag" in lo:
             add(f"Flag pattern found → {f.detail[:100]}")
-        if f.severity == "high" and "base64" in f.label.lower():
+        if f.severity == "high" and "base64" in lo:
             add("Base64 payload decoded to something interesting — inspect the decoded content.")
-        if f.severity == "high" and ("pem" in f.label.lower() or "private key" in f.label.lower()):
-            add("Private key material in file — extract and check for associated services.")
+        if f.severity == "high" and ("pem" in lo or "private key" in lo):
+            add("Private key material found — extract and check what service it belongs to.")
         if f.artifact and any(f.artifact.endswith(ext) for ext in (".zip", ".gz", ".tar")):
             add(f"Embedded archive → try: unzip {f.artifact}")
-        if f.severity == "high" and "trailing" in f.label.lower():
-            artifact_hint = f" → inspect {f.artifact}" if f.artifact else ""
-            add(f"Trailing data after container EOF{artifact_hint} — try: binwalk -e or unzip on the original file.")
-        if "gps" in f.label.lower():
-            add("GPS coordinates found in EXIF — check for location leakage or encoded hints.")
-        if "thumbnail" in f.label.lower() and f.artifact:
-            add(f"Embedded thumbnail extracted to {f.artifact} — compare it visually against the main image.")
-        if "lsb" in f.label.lower() and "plane" in f.label.lower() and f.artifact:
-            add(f"Structured LSB plane → open {f.artifact} for visual inspection, "
-                "or try: zsteg -a image.png")
-        if "steghide" in f.label.lower() and "no passphrase" in f.label.lower():
-            add("steghide brute-force failed — try a larger wordlist: "
-                "stegtriage image.jpg --wordlist /usr/share/wordlists/rockyou.txt")
-        if f.severity == "high" and "steghide extraction succeeded" in f.label.lower() and f.artifact:
-            add(f"steghide extracted data to {f.artifact} — inspect it for the flag.")
+        if f.severity == "high" and "trailing" in lo:
+            hint = f" ({f.artifact})" if f.artifact else ""
+            add(f"Trailing data after container EOF{hint} — try: binwalk -e or unzip on the original file.")
+        if "gps" in lo:
+            add("GPS coordinates in EXIF — check for location leakage or position-encoded hints.")
+        if "thumbnail" in lo and f.artifact:
+            add(f"Embedded thumbnail extracted → {f.artifact} — compare visually with the main image.")
+        if "lsb" in lo and "plane" in lo and f.artifact:
+            add(f"Structured LSB plane → open {f.artifact} visually, or try: zsteg -a <image>")
+        if "steghide" in lo and "no passphrase" in lo:
+            add(
+                "steghide brute-force failed — try a larger wordlist: "
+                "stegtriage <image> --wordlist /usr/share/wordlists/rockyou.txt"
+            )
+        if f.severity == "high" and "steghide extraction succeeded" in lo and f.artifact:
+            add(f"steghide extracted payload → {f.artifact} — inspect it for the flag.")
+        if f.severity == "high" and "embedded file" in lo:
+            add(
+                "zsteg found an embedded file signature — "
+                "try: zsteg --extract <image> to carve it out."
+            )
+        if "url" in lo and f.severity in ("medium", "high"):
+            add(f"URL found in file data → {f.detail[:80]}")
+        if "near-constant lsb" in lo:
+            add(
+                "Near-constant LSB plane — solid-colour image may hide data in LSB. "
+                "Check the bitplane images and try: zsteg -a <image>"
+            )
 
     if tips:
         console.print()
