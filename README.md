@@ -13,7 +13,7 @@ Point it at an image, get back a ranked table of everything suspicious — hidde
 ### 1. Python package
 
 ```bash
-git clone <repo>
+git clone git@github.com:aryan-errs/stegtriage.git
 cd stegtriage
 
 python3 -m venv .venv
@@ -28,13 +28,13 @@ Requires **Python 3.10+**. Python dependencies (`pillow`, `numpy`, `rich`, `clic
 
 StegTriage shells out to several binaries. **All are optional** — the tool degrades gracefully when any are absent, marking those modules as `SKIPPED` with an install hint. Never crashes because a tool is missing.
 
-| Tool | Used for | Linux (apt) | macOS (brew) | Other |
-|---|---|---|---|---|
-| `exiftool` | EXIF / metadata extraction | `apt install libimage-exiftool-perl` | `brew install exiftool` | [exiftool.org](https://exiftool.org) |
-| `binwalk` | Embedded file signatures + extraction | `apt install binwalk` | `brew install binwalk` | `pip install binwalk` |
-| `zsteg` | PNG/BMP LSB stego (all orderings) | — | — | `gem install zsteg` (requires Ruby) |
-| `steghide` | JPEG/BMP/WAV passphrase extraction | `apt install steghide` | `brew install steghide` | — |
-| `file` | Magic-byte type identification | `apt install file` | built-in | — |
+| Tool       | Used for                              | Linux (apt)                          | macOS (brew)            | Other                                |
+| ---------- | ------------------------------------- | ------------------------------------ | ----------------------- | ------------------------------------ |
+| `exiftool` | EXIF / metadata extraction            | `apt install libimage-exiftool-perl` | `brew install exiftool` | [exiftool.org](https://exiftool.org) |
+| `binwalk`  | Embedded file signatures + extraction | `apt install binwalk`                | `brew install binwalk`  | `pip install binwalk`                |
+| `zsteg`    | PNG/BMP LSB stego (all orderings)     | —                                    | —                       | `gem install zsteg` (requires Ruby)  |
+| `steghide` | JPEG/BMP/WAV passphrase extraction    | `apt install steghide`               | `brew install steghide` | —                                    |
+| `file`     | Magic-byte type identification        | `apt install file`                   | built-in                | —                                    |
 
 Check which tools are available on your system:
 
@@ -114,19 +114,19 @@ stegtriage challenge.png --json > report.json
 
 ### All options
 
-| Option | Default | Description |
-|---|---|---|
-| `IMAGE` | (required) | Path to the image / file to analyse |
-| `--wordlist PATH` | bundled 65-entry list | Wordlist for steghide passphrase brute-force |
-| `--password TEXT` | — | Single known passphrase for steghide (skips wordlist) |
-| `--outdir PATH` | `./stegtriage_<name>/` | Where artifacts are written |
-| `--only MODULES` | all | Comma-separated list of modules to run |
-| `--skip MODULES` | none | Comma-separated list of modules to skip |
-| `--min-str-len N` | `6` | Minimum printable-string run length |
-| `--threads N` | CPU count | Max parallel workers |
-| `--json` | off | Emit JSON to stdout instead of the rich table |
-| `--quiet` | off | Findings table only, suppress status lines |
-| `-v` / `-vv` | off | Increase verbosity (`-vv` dumps raw tool output) |
+| Option            | Default                | Description                                           |
+| ----------------- | ---------------------- | ----------------------------------------------------- |
+| `IMAGE`           | (required)             | Path to the image / file to analyse                   |
+| `--wordlist PATH` | bundled 65-entry list  | Wordlist for steghide passphrase brute-force          |
+| `--password TEXT` | —                      | Single known passphrase for steghide (skips wordlist) |
+| `--outdir PATH`   | `./stegtriage_<name>/` | Where artifacts are written                           |
+| `--only MODULES`  | all                    | Comma-separated list of modules to run                |
+| `--skip MODULES`  | none                   | Comma-separated list of modules to skip               |
+| `--min-str-len N` | `6`                    | Minimum printable-string run length                   |
+| `--threads N`     | CPU count              | Max parallel workers                                  |
+| `--json`          | off                    | Emit JSON to stdout instead of the rich table         |
+| `--quiet`         | off                    | Findings table only, suppress status lines            |
+| `-v` / `-vv`      | off                    | Increase verbosity (`-vv` dumps raw tool output)      |
 
 Exit code is **always 0** on a completed run ("nothing found" is a valid result). Non-zero only on usage or I/O errors.
 
@@ -182,9 +182,10 @@ Native Pillow + NumPy — no external binary.
 **(b) Bitstream extraction:** LSB bits are extracted in multiple orderings (row-major / column-major × RGB / BGR × LSB-first / MSB-first, per-channel and combined) and each stream is scanned for flags, URLs, base64, and key material. A match is **HIGH** and reports the exact ordering used.
 
 **(c) Statistical analysis:**
-- *Shannon entropy* — 0 = constant (solid colour), 1 = fully random. Near-constant channels (entropy < 0.05) flagged **MEDIUM**.
-- *Structure score* — long identical-bit runs + row-sum variance deviation. Non-trivial structure in a non-constant channel flagged **MEDIUM/HIGH**.
-- *Chi-square heuristic* — Westfeld-Pfitzmann adjacent-pair test. High embedding probability flagged **MEDIUM**. Most useful on natural photos; not meaningful on solid-colour images. Cited as a heuristic.
+
+- _Shannon entropy_ — 0 = constant (solid colour), 1 = fully random. Near-constant channels (entropy < 0.05) flagged **MEDIUM**.
+- _Structure score_ — long identical-bit runs + row-sum variance deviation. Non-trivial structure in a non-constant channel flagged **MEDIUM/HIGH**.
+- _Chi-square heuristic_ — Westfeld-Pfitzmann adjacent-pair test. High embedding probability flagged **MEDIUM**. Most useful on natural photos; not meaningful on solid-colour images. Cited as a heuristic.
 
 ### `zsteg`
 
@@ -308,25 +309,25 @@ stegtriage_challenge/
 
 ## Severity levels
 
-| Level | Meaning |
-|---|---|
-| **HIGH** | Strong signal — flag found, known-malicious signature, extension mismatch, data past container EOF, steghide extraction succeeded |
+| Level      | Meaning                                                                                                                                        |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **HIGH**   | Strong signal — flag found, known-malicious signature, extension mismatch, data past container EOF, steghide extraction succeeded              |
 | **MEDIUM** | Worth investigating — GPS data, comment fields, base64 blobs, ExifTool warnings, near-constant or structured LSB planes, text content in zsteg |
-| **LOW** | Informational — email addresses, hex blobs, embedded thumbnail, unusual aspect ratio |
-| **INFO** | Context only — software tags, steghide wordlist exhausted |
+| **LOW**    | Informational — email addresses, hex blobs, embedded thumbnail, unusual aspect ratio                                                           |
+| **INFO**   | Context only — software tags, steghide wordlist exhausted                                                                                      |
 
 ---
 
 ## Supported formats
 
-| Format | fileinfo | exif | strings | binwalk | lsb | zsteg | steghide |
-|---|---|---|---|---|---|---|---|
-| PNG | ✓ | ✓ | ✓ | ✓ native EOF | ✓ | ✓ | ✗ |
-| JPEG | ✓ | ✓ | ✓ | ✓ native EOF | ✓ | ✗ | ✓ |
-| BMP | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| GIF | ✓ | ✓ | ✓ | ✓ native EOF | ✓ | ✗ | ✗ |
-| WAV / AU | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✓ |
-| Any file | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
+| Format   | fileinfo | exif | strings | binwalk      | lsb | zsteg | steghide |
+| -------- | -------- | ---- | ------- | ------------ | --- | ----- | -------- |
+| PNG      | ✓        | ✓    | ✓       | ✓ native EOF | ✓   | ✓     | ✗        |
+| JPEG     | ✓        | ✓    | ✓       | ✓ native EOF | ✓   | ✗     | ✓        |
+| BMP      | ✓        | ✓    | ✓       | ✓            | ✓   | ✓     | ✓        |
+| GIF      | ✓        | ✓    | ✓       | ✓ native EOF | ✓   | ✗     | ✗        |
+| WAV / AU | ✓        | ✓    | ✓       | ✓            | ✗   | ✗     | ✓        |
+| Any file | ✓        | ✓    | ✓       | ✓            | ✗   | ✗     | ✗        |
 
 ---
 
