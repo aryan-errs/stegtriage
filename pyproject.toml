@@ -6,7 +6,21 @@ build-backend = "setuptools.build_meta"
 name = "stegtriage"
 version = "0.1.0"
 description = "Automated steganography / forensics triage tool for CTF challenges"
+readme = "README.md"
 requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "Aryan", email = "aryan182282@gmail.com" }]
+keywords = ["steganography", "forensics", "ctf", "stego", "security", "lsb"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Environment :: Console",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Information Technology",
+]
 dependencies = [
     "pillow",
     "numpy",
@@ -14,12 +28,17 @@ dependencies = [
     "click",
 ]
 
+[project.urls]
+Homepage = "https://github.com/aryan-errs/stegtriage"
+Issues = "https://github.com/aryan-errs/stegtriage/issues"
+
 [project.scripts]
 stegtriage = "stegtriage.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["stegtriage*"]
+exclude = ["tests*"]
 
 [project.optional-dependencies]
 dev = ["pytest>=7"]
